@@ -21,9 +21,9 @@
 
 (ert-deftest test-format ()
   "Tests formatting of URI placed on kill ring."
-  (should (equal (git-share--format "github.com/user/repo" "main" "foo/bar.el" 323)
+  (should (equal (git-share--format-loc "github.com/user/repo" "main" "foo/bar.el" 323)
                  "https://github.com/user/repo/blob/main/foo/bar.el#L323"))
-  (should (equal (git-share--format "git.sr.ht/~user/repo" "main" "foo/bar.el" 323)
+  (should (equal (git-share--format-loc "git.sr.ht/~user/repo" "main" "foo/bar.el" 323)
                  "https://git.sr.ht/~user/repo/tree/main/item/foo/bar.el#L323")))
 
 (ert-deftest test-extract-commit ()

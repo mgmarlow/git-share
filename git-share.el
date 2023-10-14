@@ -43,16 +43,6 @@
   :group 'git-share
   :type 'boolean)
 
-(defun git-share--format (basename branch rel-filename loc)
-  "Format BASENAME, BRANCH, REL-FILENAME, and LOC into a URI."
-  (let ((format-string
-         (cond
-          ((string-prefix-p "github.com" basename) "https://%s/blob/%s/%s" )
-          ((string-prefix-p "git.sr.ht" basename) "https://%s/tree/%s/item/%s")
-          (t (error "Unsupported git remote %s" basename))))
-        (filename-at-loc (concat rel-filename "#L" (number-to-string loc))))
-    (format format-string basename branch filename-at-loc)))
-
 (defun git-share--maybe-remove-extension (uri)
   "Remove '.git' from a repo URI, if it exists."
   (if (string-suffix-p ".git" uri)
@@ -109,19 +99,37 @@ are forwarded into the git blame command."
         (substring hash 1)
       hash)))
 
+(defun git-share--format-loc (basename branch rel-filename loc)
+  "Format BASENAME, BRANCH, REL-FILENAME, and LOC into a URI."
+  (let ((format-string
+         (cond
+          ((string-prefix-p "github.com" basename) "https://%s/blob/%s/%s")
+          ((string-prefix-p "git.sr.ht" basename) "https://%s/tree/%s/item/%s")
+          (t (error "Unsupported git remote %s" basename))))
+        (filename-at-loc (concat rel-filename "#L" (number-to-string loc))))
+    (format format-string basename branch filename-at-loc)))
+
 (defun git-share--loc-url (filename)
   (let* ((url (vc-git-repository-url filename))
          (basename (git-share--repo-basename url))
          (branch (git-share--branch-prompt))
          (rel-filename (file-relative-name filename (vc-root-dir))))
-    (git-share--format basename branch rel-filename (line-number-at-pos))))
+    (git-share--format-loc basename branch rel-filename (line-number-at-pos))))
+
+(defun git-share--format-commit (basename commit)
+  (let ((format-string
+         (cond
+          ((string-prefix-p "github.com" basename) "https://%s/commit/%s")
+          ((string-prefix-p "git.sr.ht" basename) "https://%s/commit/%s")
+          (t (error "Unsupported git remote %s" basename)))))
+    (format format-string basename commit)))
 
 (defun git-share--commit-url (filename)
   (let* ((url (vc-git-repository-url filename))
          (basename (git-share--repo-basename url))
          (commit (git-share--extract-commit
                   (git-share--blame-line filename (line-number-at-pos)))))
-    (format "https://%s/commit/%s" basename commit)))
+    (git-share--format-commit basename commit)))
 
 ;;;###autoload
 (defun git-share ()
