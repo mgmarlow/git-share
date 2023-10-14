@@ -109,11 +109,11 @@ are forwarded into the git blame command."
         (filename-at-loc (concat rel-filename "#L" (number-to-string loc))))
     (format format-string basename branch filename-at-loc)))
 
-(defun git-share--loc-url (filename)
-  (let* ((url (vc-git-repository-url filename))
-         (basename (git-share--repo-basename url))
-         (branch (git-share--branch-prompt))
-         (rel-filename (file-relative-name filename (vc-root-dir))))
+;; TODO: ranges
+(defun git-share--loc-url (filename url &optional default-branch root)
+  (let* ((basename (git-share--repo-basename url))
+         (branch (or default-branch (git-share--branch-prompt)))
+         (rel-filename (file-relative-name filename (or root (vc-root-dir)))))
     (git-share--format-loc basename branch rel-filename (line-number-at-pos))))
 
 (defun git-share--format-commit (basename commit)
@@ -124,30 +124,30 @@ are forwarded into the git blame command."
           (t (error "Unsupported git remote %s" basename)))))
     (format format-string basename commit)))
 
-(defun git-share--commit-url (filename)
-  (let* ((url (vc-git-repository-url filename))
-         (basename (git-share--repo-basename url))
-         (commit (git-share--extract-commit
-                  (git-share--blame-line filename (line-number-at-pos)))))
+(defun git-share--commit-url (filename url &optional commit)
+  (let* ((basename (git-share--repo-basename url))
+         (commit (or commit
+                     (git-share--extract-commit
+                      (git-share--blame-line filename (line-number-at-pos))))))
     (git-share--format-commit basename commit)))
 
 ;;;###autoload
 (defun git-share ()
   "Copy a web link to the LOC at point."
   (interactive)
-  (let ((filename (buffer-file-name (current-buffer))))
-    (unless (and filename (vc-git-registered filename))
-      (error "Must be in a git repository"))
-    (git-share--copy-link (git-share--loc-url filename))))
+  (if-let* ((filename (buffer-file-name (current-buffer)))
+            (url (vc-git-repository-url filename)))
+      (git-share--copy-link (git-share--loc-url filename url))
+    (error "Must be in a git repository")))
 
 ;;;###autoload
 (defun git-share-commit ()
   "Copy a web link to the commit at point."
   (interactive)
-  (let ((filename (buffer-file-name (current-buffer))))
-    (unless (and filename (vc-git-registered filename))
-      (error "Must be in a git repository"))
-    (git-share--copy-link (git-share--commit-url filename))))
+  (if-let* ((filename (buffer-file-name (current-buffer)))
+            (url (vc-git-repository-url filename)))
+      (git-share--copy-link (git-share--commit-url filename url))
+    (error "Must be in a git repository")))
 
 (provide 'git-share)
 ;;; git-share.el ends here
