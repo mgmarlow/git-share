@@ -1,5 +1,7 @@
 # git-share
 
+[![builds.sr.ht status](https://builds.sr.ht/~mgmarlow/git-share/commits/main/.build.yml.svg)](https://builds.sr.ht/~mgmarlow/git-share/commits/main/.build.yml?)
+
 An emacs package for sharing code links with colleagues.
 
 Supports:
