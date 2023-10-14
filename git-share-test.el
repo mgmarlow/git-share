@@ -26,6 +26,9 @@
   (should (equal (git-share--loc-url "foo/bar/main.rs" "git@git.sr.ht:~user/repo" "main" ".")
                  "https://git.sr.ht/~user/repo/tree/main/item/foo/bar/main.rs#L1")))
 
+(ert-deftest test-loc-unsupported-provider ()
+  (should-error (git-share--loc-url "foo.txt" "git@foolab.com:inkscape/inkscape.git" "main" ".")))
+
 (ert-deftest test-github-commit ()
   (should (equal (git-share--commit-url "foo.txt" "git@github.com:user/repo.git" "002c05b6")
                  "https://github.com/user/repo/commit/002c05b6")))
