@@ -2,8 +2,8 @@ image: debian/stable
 packages:
   - emacs
 sources:
-  - https://git.sr.ht/~mgmarlow/store-git-link
+  - https://git.sr.ht/~mgmarlow/git-share
 tasks:
   - test: |
-      cd store-git-link
+      cd git-share
       make test
