@@ -1,0 +1,28 @@
+* git-share changelog
+
+** 1.0.0 10/14/2023
+
+- Renamed to ~git-share~. The new autoloaded commands are renamed to
+  ~git-share~ and ~git-share-commit~.
+
+- Removed ~sgl-prefer-current-branch~ in favor of always prompting for
+  branch selection.
+
+** 06/28/23
+
+- New custom variable: ~sgl-open-links-in-browser~. Defaults to
+  ~nil~. When ~t~, copying links with either ~store-git-link~ or
+  ~store-git-link-commit~ will open that link immediately in your
+  browser.
+
+** 04/30/23
+
+- New command: ~store-git-link-commit~. Copies a link to the commit
+  hash associated responsible for the current line of code, determined
+  via git blame.
+
+** 04/29/23
+
+- New custom variable: ~sgl-prefer-current-branch~. Defaults to
+  ~t~. When ~t~, always selects the current branch when generating
+  links. When ~nil~, opens a minibuffer prompt for branch selection.
