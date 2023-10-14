@@ -1,6 +1,11 @@
 # git-share
 
-An emacs package for sharing code links with colleagues. Currently supports Github and Sourcehut.
+An emacs package for sharing code links with colleagues.
+
+Supports:
+
+- Github
+- Sourcehut
 
 ## Installation
 
@@ -28,15 +33,19 @@ git clone https://git.sr.ht/~mgmarlow/git-share /path/to/git-share
 ## Commands
 
 - `M-x git-share`: Copies a URL to the current line of code.
-- `M-x git-share-commit`: Copies a URL to the commit responsible for the current line of code, determined via `git blame`.
+
+- `M-x git-share-commit`: Copies a URL to the commit responsible for
+  the current line of code, determined via `git blame`.
 
 ### Configuration
 
-- `git-share-open-links-in-browser`: When `t`, opens links in your browser when copied.
+- `git-share-open-links-in-browser`: When `t`, opens links in your
+  browser when copied.
 
 ## Contributing
 
-Please direct bug reports or patches to the [the mailing list](https://lists.sr.ht/~mgmarlow/public-inbox).
+Please direct bug reports or patches to the [the mailing
+list](https://lists.sr.ht/~mgmarlow/public-inbox).
 
 ## License
 
