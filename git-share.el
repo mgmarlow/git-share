@@ -32,7 +32,6 @@
 
 ;;; Code:
 
-(require 'vc)
 (require 'vc-git)
 
 (defgroup git-share ()
@@ -44,26 +43,15 @@
   :group 'git-share
   :type 'boolean)
 
-;; URI formatters for different code hosts
-(defun git-share--format-sourcehut (basename branch rel-filename loc)
-  (format "https://%s/tree/%s/item/%s"
-          basename
-          branch
-          (concat rel-filename "#L" (number-to-string loc))))
-
-(defun git-share--format-github (basename branch rel-filename loc)
-  (format "https://%s/blob/%s/%s"
-          basename
-          branch
-          (concat rel-filename "#L" (number-to-string loc))))
-
 (defun git-share--format (basename branch rel-filename loc)
   "Format BASENAME, BRANCH, REL-FILENAME, and LOC into a URI."
-  (cond ((string-match-p "github.com" basename)
-         (git-share--format-github basename branch rel-filename loc))
-        ((string-match-p "git.sr.ht" basename)
-         (git-share--format-sourcehut basename branch rel-filename loc))
-        (t (error "Unsupported git remote"))))
+  (let ((format-string
+         (cond
+          ((string-prefix-p "github.com" basename) "https://%s/blob/%s/%s" )
+          ((string-prefix-p "git.sr.ht" basename) "https://%s/tree/%s/item/%s")
+          (t (error "Unsupported git remote %s" basename))))
+        (filename-at-loc (concat rel-filename "#L" (number-to-string loc))))
+    (format format-string basename branch filename-at-loc)))
 
 (defun git-share--maybe-remove-extension (uri)
   "Remove '.git' from a repo URI, if it exists."
@@ -89,13 +77,6 @@ git@git.sr.ht:~user/repo     -> git.sr.ht/~user/repo"
         (car branches)
       (completing-read "Select branch: " branches nil t))))
 
-(defun git-share--generate-link (filename)
-  "Generate a link to the repository of current buffer at current line number."
-  (let ((basename (git-share--repo-basename (vc-git-repository-url filename)))
-        (branch (git-share--branch-prompt))
-        (rel-filename (file-relative-name filename (vc-root-dir))))
-    (git-share--format basename branch rel-filename (line-number-at-pos))))
-
 (defun git-share--copy-link (link)
   "Copy LINK to clipboard.
 
@@ -104,18 +85,6 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
   (when git-share-open-links-in-browser
     (browse-url link))
   (message (concat "Copied " link " to clipboard.")))
-
-;;;###autoload
-(defun git-share ()
-  "Store a web link to git repository at current point in the kill ring."
-  (interactive)
-  (let ((filename (buffer-file-name (current-buffer))))
-    (unless (and filename (vc-git-registered filename))
-      (error "Must be in a git repository"))
-    (git-share--copy-link (git-share--generate-link filename))))
-
-(defun git-share--format-commit (basename commit)
-  (format "https://%s/commit/%s" basename commit))
 
 (defun git-share--vc-git-blame (files &optional buffer &rest args)
   "Run git blame on FILES.
@@ -140,17 +109,37 @@ are forwarded into the git blame command."
         (substring hash 1)
       hash)))
 
+(defun git-share--loc-url (filename)
+  (let* ((url (vc-git-repository-url filename))
+         (basename (git-share--repo-basename url))
+         (branch (git-share--branch-prompt))
+         (rel-filename (file-relative-name filename (vc-root-dir))))
+    (git-share--format basename branch rel-filename (line-number-at-pos))))
+
+(defun git-share--commit-url (filename)
+  (let* ((url (vc-git-repository-url filename))
+         (basename (git-share--repo-basename url))
+         (commit (git-share--extract-commit
+                  (git-share--blame-line filename (line-number-at-pos)))))
+    (format "https://%s/commit/%s" basename commit)))
+
 ;;;###autoload
-(defun git-share-commit ()
-  "Store a link to the commit associated with current point in the kill ring."
+(defun git-share ()
+  "Copy a web link to the LOC at point."
   (interactive)
   (let ((filename (buffer-file-name (current-buffer))))
     (unless (and filename (vc-git-registered filename))
       (error "Must be in a git repository"))
-    (let ((basename (git-share--repo-basename (vc-git-repository-url filename)))
-          (commit (git-share--extract-commit
-                   (git-share--blame-line filename (line-number-at-pos)))))
-      (git-share--copy-link (git-share--format-commit basename commit)))))
+    (git-share--copy-link (git-share--loc-url filename))))
+
+;;;###autoload
+(defun git-share-commit ()
+  "Copy a web link to the commit at point."
+  (interactive)
+  (let ((filename (buffer-file-name (current-buffer))))
+    (unless (and filename (vc-git-registered filename))
+      (error "Must be in a git repository"))
+    (git-share--copy-link (git-share--commit-url filename))))
 
 (provide 'git-share)
 ;;; git-share.el ends here

@@ -32,10 +32,3 @@
                  "002c05b6"))
   (should (equal (git-share--extract-commit "^002c05b6 (mgmarlow 2023-04-29 10:09:12 -0700 77)   \"Extracts basename from HTTPS repository URI.")
                  "002c05b6")))
-
-(ert-deftest test-format-commit ()
-  "Tests commit link formatting."
-  (should (equal (git-share--format-commit "github.com/user/repo" "002c05b6")
-                 "https://github.com/user/repo/commit/002c05b6"))
-  (should (equal (git-share--format-commit "git.sr.ht/~user/repo" "002c05b6")
-                 "https://git.sr.ht/~user/repo/commit/002c05b6")))
