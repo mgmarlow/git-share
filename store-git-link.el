@@ -4,6 +4,9 @@
 
 ;; Author: Graham Marlow <info@mgmarlow.com>
 ;; Keywords: vc, tools
+;; Version: 1.0.0
+;; Package-Requires: ((emacs "28.1"))
+;; URL: https://git.sr.ht/~mgmarlow/store-git-link
 
 ;; This program is free software; you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -20,8 +23,8 @@
 
 ;;; Commentary:
 
-;; A tiny Emacs package for sharing code links with colleagues. Currently
-;; supports Github and Sourcehut.
+;; A tiny Emacs package for sharing code links with colleagues.
+;; Currently supports Github and Sourcehut.
 ;;
 ;; - `store-git-link': Copies a link to the current line of code.
 ;; - `store-git-link-commit': Copies a link to the commit hash associated
@@ -38,13 +41,6 @@
 
 (defcustom sgl-open-links-in-browser nil
   "If non-nil, opens links in your default browser when copied."
-  :group 'store-git-link
-  :type 'boolean)
-
-(defcustom sgl-prefer-current-branch t
-  "If non-nil, always selects the current branch when generating links.
-
-When nil, opens a minibuffer prompt for branch selection."
   :group 'store-git-link
   :type 'boolean)
 
@@ -88,12 +84,10 @@ git@git.sr.ht:~user/repo     -> git.sr.ht/~user/repo"
      (replace-regexp-in-string ":" "/" (substring repo-uri (length "git@"))))))
 
 (defun sgl--branch-prompt ()
-  "When `sgl-prefer-current-branch' is nil, prompt for branch selection
-if there's more than one choice. Otherwise use the current branch."
   (let ((branches (vc-git-branches)))
-    (if (or sgl-prefer-current-branch (= (length branches) 1))
+    (if (= (length branches) 1)
         (car branches)
-      (completing-read "Pick a branch: " branches nil t))))
+      (completing-read "Select branch: " branches nil t))))
 
 (defun sgl--generate-link (filename)
   "Generate a link to the repository of current buffer at current line number."
