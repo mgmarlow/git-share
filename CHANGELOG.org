@@ -10,6 +10,8 @@
 
 - Add Gitlab support.
 
+- Add support for selecting and sharing regions via ~git-share~.
+
 ** 06/28/23
 
 - New custom variable: ~sgl-open-links-in-browser~. Defaults to

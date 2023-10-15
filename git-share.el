@@ -129,10 +129,17 @@ are forwarded into the git blame command."
   (git-share--extract-commit
    (git-share--blame-line (git-share-remote-rel-filename remote) (line-number-at-pos))))
 
-;; TODO: ranges
+(defun git-share--line-number ()
+  (if (use-region-p)
+      (concat
+       (number-to-string (line-number-at-pos (region-beginning)))
+       "-"
+       (number-to-string (line-number-at-pos (region-end))))
+    (number-to-string (line-number-at-pos))))
+
 (defun git-share--loc-url (remote &optional default-branch)
   (let* ((branch (or default-branch (git-share--branch-prompt)))
-         (loc (number-to-string (line-number-at-pos)))
+         (loc (git-share--line-number))
          (forge (alist-get (git-share-remote-forge remote) git-share-forge-alist)))
     (format
      (git-share-forge-loc-format-string forge)
