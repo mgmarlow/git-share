@@ -61,6 +61,16 @@
              (t (error "Unsupported git remote %s" remote-url)))
      :kind kind)))
 
+(cl-defstruct git-share-forge loc-fmt commit-fmt)
+
+(defvar git-share-forge-alist
+  `((github . ,(make-git-share-forge
+                :loc-fmt "%s/blob/%s/%s"
+                :commit-fmt "%s/commit/%s"))
+    (sourcehut . ,(make-git-share-forge
+                   :loc-fmt "%s/tree/%s/item/%s"
+                   :commit-fmt "%s/commit/%s"))))
+
 (defun git-share--ssh-to-https (remote-url)
   (concat "https://" (replace-regexp-in-string ":" "/" (substring remote-url (length "git@")))))
 
@@ -107,31 +117,29 @@ are forwarded into the git blame command."
         (substring hash 1)
       hash)))
 
-(defun git-share--format-loc (remote branch loc)
-  (let ((format-string
-         (pcase (git-share-remote-forge remote)
-           ('github "%s/blob/%s/%s")
-           ('sourcehut "%s/tree/%s/item/%s")))
-        (filename-at-loc (concat (git-share-remote-rel-filename remote) "#L" (number-to-string loc))))
-    (format format-string (git-share-remote-base-url remote) branch filename-at-loc)))
-
-(defun git-share--format-commit (remote commit)
-  (let ((format-string
-         (pcase (git-share-remote-forge remote)
-           ('github "%s/commit/%s")
-           ('sourcehut "%s/commit/%s"))))
-    (format format-string (git-share-remote-base-url remote) commit)))
-
 ;; TODO: ranges
 (defun git-share--loc-url (remote &optional default-branch)
-  (let* ((branch (or default-branch (git-share--branch-prompt))))
-    (git-share--format-loc remote branch (line-number-at-pos))))
+  (let* ((branch (or default-branch (git-share--branch-prompt)))
+         (loc (number-to-string (line-number-at-pos)))
+         (forge (alist-get (git-share-remote-forge remote) git-share-forge-alist)))
+    (format
+     (git-share-forge-loc-fmt forge)
+     (git-share-remote-base-url remote)
+     branch
+     (concat (git-share-remote-rel-filename remote) "#L" loc))))
 
 (defun git-share--commit-url (remote &optional commit)
-  (let ((commit (or commit
-                    (git-share--extract-commit
-                     (git-share--blame-line (git-share-remote-rel-filename remote) (line-number-at-pos))))))
-    (git-share--format-commit remote commit)))
+  (let* ((loc (line-number-at-pos))
+         (commit (or commit
+                     (git-share--extract-commit
+                      (git-share--blame-line
+                       (git-share-remote-rel-filename remote)
+                       loc))))
+         (forge (alist-get (git-share-remote-forge remote) git-share-forge-alist)))
+    (format
+     (git-share-forge-commit-fmt forge)
+     (git-share-remote-base-url remote)
+     commit)))
 
 ;;;###autoload
 (defun git-share ()
