@@ -50,6 +50,11 @@ git clone https://git.sr.ht/~mgmarlow/git-share /path/to/git-share
 Please direct bug reports or patches to the [the mailing
 list](https://lists.sr.ht/~mgmarlow/public-inbox).
 
+### Adding new git remotes
+
+Check out this commit for an example: [Add Gitlab
+support](https://git.sr.ht/~mgmarlow/git-share/commit/7f04a4a284bbff3eb9bacba93064351af5c4ffb6).
+
 ## License
 
 Licensed under [GPL-3.0](./LICENSE).
