@@ -33,6 +33,7 @@
 ;;; Code:
 
 (require 'vc-git)
+(require 'cl-lib)
 
 (defgroup git-share ()
   "Generate links to git repositories directly from source."
@@ -43,23 +44,30 @@
   :group 'git-share
   :type 'boolean)
 
+(cl-defstruct git-share-remote base-url rel-filename forge kind)
+
+(defun git-share-remote-from-filename (filename &optional remote-url)
+  (let* ((remote-url (or remote-url (vc-git-repository-url filename)))
+         (root (vc-root-dir))
+         (kind (if (string-prefix-p "https" remote-url) 'https 'ssh)))
+    (make-git-share-remote
+     :base-url (if (eq kind 'https)
+                   (git-share--maybe-remove-extension remote-url)
+                 (git-share--maybe-remove-extension (git-share--ssh-to-https remote-url)))
+     :rel-filename (file-relative-name filename root)
+     :forge (cond
+             ((string-match-p "github.com" remote-url) 'github)
+             ((string-match-p "git.sr.ht" remote-url) 'sourcehut)
+             (t (error "Unsupported git remote %s" remote-url)))
+     :kind kind)))
+
+(defun git-share--ssh-to-https (remote-url)
+  (concat "https://" (replace-regexp-in-string ":" "/" (substring remote-url (length "git@")))))
+
 (defun git-share--maybe-remove-extension (uri)
-  "Remove '.git' from a repo URI, if it exists."
   (if (string-suffix-p ".git" uri)
       (substring uri 0 (* (length ".git") -1))
     uri))
-
-(defun git-share--repo-basename (repo-uri)
-  "Extract basename from REPO-URI.
-
-Examples:
-https://github.com/user/repo.git -> github.com/user/repo
-git@github.com:user/repo.git -> github.com/user/repo
-git@git.sr.ht:~user/repo     -> git.sr.ht/~user/repo"
-  (git-share--maybe-remove-extension
-   (if (string-prefix-p "https" repo-uri)
-       (substring repo-uri (length "https://"))
-     (replace-regexp-in-string ":" "/" (substring repo-uri (length "git@"))))))
 
 (defun git-share--branch-prompt ()
   (let ((branches (vc-git-branches)))
@@ -99,45 +107,39 @@ are forwarded into the git blame command."
         (substring hash 1)
       hash)))
 
-(defun git-share--format-loc (basename branch rel-filename loc)
-  "Format BASENAME, BRANCH, REL-FILENAME, and LOC into a URI."
+(defun git-share--format-loc (remote branch loc)
   (let ((format-string
-         (cond
-          ((string-prefix-p "github.com" basename) "https://%s/blob/%s/%s")
-          ((string-prefix-p "git.sr.ht" basename) "https://%s/tree/%s/item/%s")
-          (t (error "Unsupported git remote %s" basename))))
-        (filename-at-loc (concat rel-filename "#L" (number-to-string loc))))
-    (format format-string basename branch filename-at-loc)))
+         (pcase (git-share-remote-forge remote)
+           ('github "%s/blob/%s/%s")
+           ('sourcehut "%s/tree/%s/item/%s")))
+        (filename-at-loc (concat (git-share-remote-rel-filename remote) "#L" (number-to-string loc))))
+    (format format-string (git-share-remote-base-url remote) branch filename-at-loc)))
+
+(defun git-share--format-commit (remote commit)
+  (let ((format-string
+         (pcase (git-share-remote-forge remote)
+           ('github "%s/commit/%s")
+           ('sourcehut "%s/commit/%s"))))
+    (format format-string (git-share-remote-base-url remote) commit)))
 
 ;; TODO: ranges
-(defun git-share--loc-url (filename url &optional default-branch root)
-  (let* ((basename (git-share--repo-basename url))
-         (branch (or default-branch (git-share--branch-prompt)))
-         (rel-filename (file-relative-name filename (or root (vc-root-dir)))))
-    (git-share--format-loc basename branch rel-filename (line-number-at-pos))))
+(defun git-share--loc-url (remote &optional default-branch)
+  (let* ((branch (or default-branch (git-share--branch-prompt))))
+    (git-share--format-loc remote branch (line-number-at-pos))))
 
-(defun git-share--format-commit (basename commit)
-  (let ((format-string
-         (cond
-          ((string-prefix-p "github.com" basename) "https://%s/commit/%s")
-          ((string-prefix-p "git.sr.ht" basename) "https://%s/commit/%s")
-          (t (error "Unsupported git remote %s" basename)))))
-    (format format-string basename commit)))
-
-(defun git-share--commit-url (filename url &optional commit)
-  (let* ((basename (git-share--repo-basename url))
-         (commit (or commit
-                     (git-share--extract-commit
-                      (git-share--blame-line filename (line-number-at-pos))))))
-    (git-share--format-commit basename commit)))
+(defun git-share--commit-url (remote &optional commit)
+  (let ((commit (or commit
+                    (git-share--extract-commit
+                     (git-share--blame-line (git-share-remote-rel-filename remote) (line-number-at-pos))))))
+    (git-share--format-commit remote commit)))
 
 ;;;###autoload
 (defun git-share ()
   "Copy a web link to the LOC at point."
   (interactive)
   (if-let* ((filename (buffer-file-name (current-buffer)))
-            (url (vc-git-repository-url filename)))
-      (git-share--copy-link (git-share--loc-url filename url))
+            (remote (git-share-remote-from-filename filename)))
+      (git-share--copy-link (git-share--loc-url remote))
     (error "Must be in a git repository")))
 
 ;;;###autoload
@@ -145,8 +147,8 @@ are forwarded into the git blame command."
   "Copy a web link to the commit at point."
   (interactive)
   (if-let* ((filename (buffer-file-name (current-buffer)))
-            (url (vc-git-repository-url filename)))
-      (git-share--copy-link (git-share--commit-url filename url))
+            (remote (git-share-remote-from-filename filename)))
+      (git-share--copy-link (git-share--commit-url remote))
     (error "Must be in a git repository")))
 
 (provide 'git-share)
