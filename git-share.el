@@ -44,9 +44,15 @@
   :group 'git-share
   :type 'boolean)
 
-(cl-defstruct git-share-remote base-url rel-filename forge)
+(cl-defstruct git-share-remote
+  "Wrapper around `vc-git-repository-url'."
+  base-url rel-filename forge)
 
 (defun git-share-remote-from-filename (filename &optional remote-url)
+  "Create `git-share-remote' from FILENAME.
+
+If REMOTE-URL is nil, determines remote URL via
+`vc-git-repository-url'."
   (let* ((remote-url (or remote-url (vc-git-repository-url filename))))
     (make-git-share-remote
      :base-url (git-share--link-base-url remote-url)
@@ -54,6 +60,7 @@
      :forge (git-share--forge-kind remote-url))))
 
 (defun git-share--forge-kind (remote-url)
+  "Return source forge kind from REMOTE-URL."
   (cond
    ((string-match-p "github.com" remote-url) 'github)
    ((string-match-p "git.sr.ht" remote-url) 'sourcehut)
@@ -126,10 +133,15 @@ are forwarded into the git blame command."
       hash)))
 
 (defun git-share--commit-at-point (remote)
+  "Extract a short commit hash for REMOTE from LOC at point."
   (git-share--extract-commit
    (git-share--blame-line (git-share-remote-rel-filename remote) (line-number-at-pos))))
 
 (defun git-share--line-number ()
+  "Return LOC line number for `git-share' as a string.
+
+When region is active, returns a range, e.g. 10-20.  Otherwise,
+returns `line-number-at-pos'."
   (if (use-region-p)
       (concat
        (number-to-string (line-number-at-pos (region-beginning)))
