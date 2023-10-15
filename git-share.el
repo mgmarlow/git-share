@@ -44,32 +44,36 @@
   :group 'git-share
   :type 'boolean)
 
-(cl-defstruct git-share-remote base-url rel-filename forge kind)
+(cl-defstruct git-share-remote base-url rel-filename forge)
 
 (defun git-share-remote-from-filename (filename &optional remote-url)
-  (let* ((remote-url (or remote-url (vc-git-repository-url filename)))
-         (root (vc-root-dir))
-         (kind (if (string-prefix-p "https" remote-url) 'https 'ssh)))
+  (let* ((remote-url (or remote-url (vc-git-repository-url filename))))
     (make-git-share-remote
-     :base-url (if (eq kind 'https)
-                   (git-share--maybe-remove-extension remote-url)
-                 (git-share--maybe-remove-extension (git-share--ssh-to-https remote-url)))
-     :rel-filename (file-relative-name filename root)
-     :forge (cond
-             ((string-match-p "github.com" remote-url) 'github)
-             ((string-match-p "git.sr.ht" remote-url) 'sourcehut)
-             (t (error "Unsupported git remote %s" remote-url)))
-     :kind kind)))
+     :base-url (git-share--link-base-url remote-url)
+     :rel-filename (file-relative-name filename (vc-root-dir))
+     :forge (git-share--forge-kind remote-url))))
 
-(cl-defstruct git-share-forge loc-fmt commit-fmt)
+(defun git-share--forge-kind (remote-url)
+  (cond
+   ((string-match-p "github.com" remote-url) 'github)
+   ((string-match-p "git.sr.ht" remote-url) 'sourcehut)
+   (t (error "Unsupported git remote %s" remote-url))))
+
+(cl-defstruct git-share-forge loc-format-string commit-format-string)
 
 (defvar git-share-forge-alist
   `((github . ,(make-git-share-forge
-                :loc-fmt "%s/blob/%s/%s"
-                :commit-fmt "%s/commit/%s"))
+                :loc-format-string "%s/blob/%s/%s"
+                :commit-format-string "%s/commit/%s"))
     (sourcehut . ,(make-git-share-forge
-                   :loc-fmt "%s/tree/%s/item/%s"
-                   :commit-fmt "%s/commit/%s"))))
+                   :loc-format-string "%s/tree/%s/item/%s"
+                   :commit-format-string "%s/commit/%s"))))
+
+(defun git-share--link-base-url (remote-url)
+  (git-share--maybe-remove-extension
+   (if (string-prefix-p "https" remote-url)
+       remote-url
+     (git-share--ssh-to-https remote-url))))
 
 (defun git-share--ssh-to-https (remote-url)
   (concat "https://" (replace-regexp-in-string ":" "/" (substring remote-url (length "git@")))))
@@ -117,27 +121,26 @@ are forwarded into the git blame command."
         (substring hash 1)
       hash)))
 
+(defun git-share--commit-at-point (remote)
+  (git-share--extract-commit
+   (git-share--blame-line (git-share-remote-rel-filename remote) (line-number-at-pos))))
+
 ;; TODO: ranges
 (defun git-share--loc-url (remote &optional default-branch)
   (let* ((branch (or default-branch (git-share--branch-prompt)))
          (loc (number-to-string (line-number-at-pos)))
          (forge (alist-get (git-share-remote-forge remote) git-share-forge-alist)))
     (format
-     (git-share-forge-loc-fmt forge)
+     (git-share-forge-loc-format-string forge)
      (git-share-remote-base-url remote)
      branch
      (concat (git-share-remote-rel-filename remote) "#L" loc))))
 
 (defun git-share--commit-url (remote &optional commit)
-  (let* ((loc (line-number-at-pos))
-         (commit (or commit
-                     (git-share--extract-commit
-                      (git-share--blame-line
-                       (git-share-remote-rel-filename remote)
-                       loc))))
+  (let* ((commit (or commit (git-share--commit-at-point remote)))
          (forge (alist-get (git-share-remote-forge remote) git-share-forge-alist)))
     (format
-     (git-share-forge-commit-fmt forge)
+     (git-share-forge-commit-format-string forge)
      (git-share-remote-base-url remote)
      commit)))
 
