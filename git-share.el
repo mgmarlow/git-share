@@ -57,6 +57,7 @@
   (cond
    ((string-match-p "github.com" remote-url) 'github)
    ((string-match-p "git.sr.ht" remote-url) 'sourcehut)
+   ((string-match-p "gitlab.com" remote-url) 'gitlab)
    (t (error "Unsupported git remote %s" remote-url))))
 
 (cl-defstruct git-share-forge loc-format-string commit-format-string)
@@ -67,7 +68,10 @@
                 :commit-format-string "%s/commit/%s"))
     (sourcehut . ,(make-git-share-forge
                    :loc-format-string "%s/tree/%s/item/%s"
-                   :commit-format-string "%s/commit/%s"))))
+                   :commit-format-string "%s/commit/%s"))
+    (gitlab . ,(make-git-share-forge
+                :loc-format-string "%s/-/blob/%s/%s"
+                :commit-format-string "%s/-/commit/%s"))))
 
 (defun git-share--link-base-url (remote-url)
   (git-share--maybe-remove-extension

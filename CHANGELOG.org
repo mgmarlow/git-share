@@ -2,11 +2,13 @@
 
 ** 1.0.0 10/14/2023
 
-- Renamed to ~git-share~. The new autoloaded commands are renamed to
+- Rename to ~git-share~. The new autoloaded commands are renamed to
   ~git-share~ and ~git-share-commit~.
 
-- Removed ~sgl-prefer-current-branch~ in favor of always prompting for
+- Remove ~sgl-prefer-current-branch~ in favor of always prompting for
   branch selection.
+
+- Add Gitlab support.
 
 ** 06/28/23
 

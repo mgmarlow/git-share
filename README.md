@@ -8,6 +8,7 @@ Supports:
 
 - Github
 - Sourcehut
+- Gitlab
 
 ## Installation
 
