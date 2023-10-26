@@ -1,5 +1,9 @@
 * git-share changelog
 
+** 1.0.1 10/26/2023
+
+- Fix a bug where relative file names break ~git-share-commit~.
+
 ** 1.0.0 10/14/2023
 
 - Rename to ~git-share~. The new autoloaded commands are renamed to

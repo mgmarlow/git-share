@@ -4,7 +4,7 @@
 
 ;; Author: Graham Marlow <info@mgmarlow.com>
 ;; Keywords: vc, tools
-;; Version: 1.0.0
+;; Version: 1.0.1
 ;; Package-Requires: ((emacs "28.1"))
 ;; URL: https://git.sr.ht/~mgmarlow/git-share
 
@@ -46,7 +46,7 @@
 
 (cl-defstruct git-share-remote
   "Wrapper around `vc-git-repository-url'."
-  base-url rel-filename forge)
+  base-url filename rel-filename forge)
 
 (defun git-share-remote-from-filename (filename &optional remote-url)
   "Create `git-share-remote' from FILENAME.
@@ -56,6 +56,7 @@ If REMOTE-URL is nil, determines remote URL via
   (let* ((remote-url (or remote-url (vc-git-repository-url filename))))
     (make-git-share-remote
      :base-url (git-share--link-base-url remote-url)
+     :filename filename
      :rel-filename (file-relative-name filename (vc-root-dir))
      :forge (git-share--forge-kind remote-url))))
 
@@ -135,7 +136,7 @@ are forwarded into the git blame command."
 (defun git-share--commit-at-point (remote)
   "Extract a short commit hash for REMOTE from LOC at point."
   (git-share--extract-commit
-   (git-share--blame-line (git-share-remote-rel-filename remote) (line-number-at-pos))))
+   (git-share--blame-line (git-share-remote-filename remote) (line-number-at-pos))))
 
 (defun git-share--line-number ()
   "Return LOC line number for `git-share' as a string.
