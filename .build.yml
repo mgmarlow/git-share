@@ -1,9 +1,0 @@
-image: debian/stable
-packages:
-  - emacs
-sources:
-  - https://git.sr.ht/~mgmarlow/git-share
-tasks:
-  - test: |
-      cd git-share
-      make test

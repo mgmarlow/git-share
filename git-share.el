@@ -4,7 +4,7 @@
 
 ;; Author: Graham Marlow <info@mgmarlow.com>
 ;; Keywords: vc, tools
-;; Version: 1.0.1
+;; Version: 1.0.2
 ;; Package-Requires: ((emacs "28.1"))
 ;; URL: https://git.sr.ht/~mgmarlow/git-share
 
@@ -138,7 +138,7 @@ are forwarded into the git blame command."
   (git-share--extract-commit
    (git-share--blame-line (git-share-remote-filename remote) (line-number-at-pos))))
 
-(defun git-share--line-number ()
+(defun git-share--line-number (forge)
   "Return LOC line number for `git-share' as a string.
 
 When region is active, returns a range, e.g. 10-20.  Otherwise,
@@ -147,12 +147,14 @@ returns `line-number-at-pos'."
       (concat
        (number-to-string (line-number-at-pos (region-beginning)))
        "-"
+       ;; Github requires a trailing -L in the second half of the range.
+       (if (eq forge 'github) "L" "")
        (number-to-string (line-number-at-pos (region-end))))
     (number-to-string (line-number-at-pos))))
 
 (defun git-share--loc-url (remote &optional default-branch)
   (let* ((branch (or default-branch (git-share--branch-prompt)))
-         (loc (git-share--line-number))
+         (loc (git-share--line-number (git-share-remote-forge remote)))
          (forge (alist-get (git-share-remote-forge remote) git-share-forge-alist)))
     (format
      (git-share-forge-loc-format-string forge)
