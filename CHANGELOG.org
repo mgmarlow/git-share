@@ -1,5 +1,9 @@
 * git-share changelog
 
+** 1.0.2 03/24/2024
+
+- Fix Github regions by adding a trailing "L", e.g. "#L23-L30".
+
 ** 1.0.1 10/26/2023
 
 - Fix a bug where relative file names break ~git-share-commit~.
