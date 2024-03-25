@@ -90,6 +90,23 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
     (browse-url link))
   (message (concat "Copied " link " to clipboard.")))
 
+;; Alternative architecture: 1 function per forge per format. Not sure
+;; if I prefer this though. It hides the difference between the
+;; different forges, which really ends up being just a format
+;; string. It would be nice for extensibility though, if any forge has
+;; an extra parameter or extra logic. More flexibility at the cost of
+;; some extra code.
+;;
+;; e.g. ((github . ((line . #'git-share--line-github)
+;;                  (region . #'git-share--region-github)))
+;;       (sourcehut . ((line . #'git-share--line-sourcehut))))
+;;
+;; (defun git-share--line-github (base-url branch filename line)
+;;   (format "%s/blob/%s/%s#L%s" base-url branch filename line))
+;;
+;; (defun git-share--region-github (base-url branch filename start end)
+;;   (format "%s/blob/%s/%s#L%s-L%s" base-url branch filename start end))
+
 (defun git-share--format-string (forge kind)
   "Retrieve a format-string from `git-share-formatter-alist'."
   (alist-get kind (alist-get forge git-share-formatter-alist)))
@@ -102,7 +119,7 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
      base-url
      branch
      filename
-     (number-to-string line))))
+     line)))
 
 (defun git-share--format-region (base-url branch filename start end)
   "Return a string URL for git repository for lines within current region."
@@ -112,8 +129,8 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
      base-url
      branch
      filename
-     (number-to-string start)
-     (number-to-string end))))
+     start
+     end)))
 
 ;;;###autoload
 (defun git-share ()
@@ -127,13 +144,13 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
             (git-share--base-url filename remote-url)
             (git-share--branch-prompt)
             (file-relative-name filename (vc-root-dir))
-            (line-number-at-pos))
+            (number-to-string (line-number-at-pos)))
          (git-share--format-line
           (git-share--base-url filename remote-url)
           (git-share--branch-prompt)
           (file-relative-name filename (vc-root-dir))
-          (line-number-at-pos (region-beginning))
-          (line-number-at-pos (region-end)))))
+          (number-to-string (line-number-at-pos (region-beginning)))
+          (number-to-string (line-number-at-pos (region-end))))))
     (error "Must be in a git repository")))
 
 ;; (cl-defstruct git-share-remote

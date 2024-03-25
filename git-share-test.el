@@ -29,11 +29,11 @@
 
 (ert-deftest test-format-line ()
   (let ((testcases '(("https://github.com/user/repo/blob/main/foo.txt#L1" .
-                      ("https://github.com/user/repo" "main" "foo.txt" 1))
+                      ("https://github.com/user/repo" "main" "foo.txt" "1"))
                      ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L1" .
-                      ("https://git.sr.ht/~user/repo" "main" "foo.txt" 1))
+                      ("https://git.sr.ht/~user/repo" "main" "foo.txt" "1"))
                      ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L1" .
-                      ("https://gitlab.com/user/repo" "main" "foo.txt" 1)))))
+                      ("https://gitlab.com/user/repo" "main" "foo.txt" "1")))))
     (dolist (testcase testcases)
       (let ((expected (car testcase))
             (input (cdr testcase)))
@@ -41,11 +41,11 @@
 
 (ert-deftest test-format-region ()
   (let ((testcases '(("https://github.com/user/repo/blob/main/foo.txt#L1-L30" .
-                      ("https://github.com/user/repo" "main" "foo.txt" 1 30))
+                      ("https://github.com/user/repo" "main" "foo.txt" "1" "30"))
                      ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L1-30" .
-                      ("https://git.sr.ht/~user/repo" "main" "foo.txt" 1 30))
+                      ("https://git.sr.ht/~user/repo" "main" "foo.txt" "1" "30"))
                      ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L1-30" .
-                      ("https://gitlab.com/user/repo" "main" "foo.txt" 1 30)))))
+                      ("https://gitlab.com/user/repo" "main" "foo.txt" "1" "30")))))
     (dolist (testcase testcases)
       (let ((expected (car testcase))
             (input (cdr testcase)))
