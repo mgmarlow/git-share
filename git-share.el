@@ -61,6 +61,7 @@
    ((string-match-p "github.com" remote-url) 'github)
    ((string-match-p "git.sr.ht" remote-url) 'sourcehut)
    ((string-match-p "gitlab.com" remote-url) 'gitlab)
+   ((string-match-p "git.sv.gnu.org" remote-url) 'savannah)
    (t (error "Unsupported git remote %s" remote-url))))
 
 (defun git-share--maybe-remove-extension (uri)
@@ -69,8 +70,8 @@
       (substring uri 0 (* (length ".git") -1))
     uri))
 
-(defun git-share--base-url (filename remote-url)
-  "Create a base HTTP URL for FILENAME from REMOTE-URL. A base
+(defun git-share--base-url (remote-url)
+  "Create a base HTTP URL for REMOTE-URL. A base
 URL includes the source forge, username, and repository name.
 
 Remotes may be either SSH or HTTPS."
@@ -80,6 +81,12 @@ Remotes may be either SSH or HTTPS."
      (string-replace "git@" "https://"
                      ;; Assuming no colons in usernames or repos.
                      (string-replace ":" "/" remote-url)))))
+
+(defun git-share--branch-prompt ()
+  (let ((branches (vc-git-branches)))
+    (if (= (length branches) 1)
+        (car branches)
+      (completing-read "Select branch: " branches nil t))))
 
 (defun git-share--copy-link (link)
   "Copy LINK to clipboard.
@@ -141,12 +148,12 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
       (git-share--copy-link
        (if (use-region-p)
            (git-share--format-region
-            (git-share--base-url filename remote-url)
+            (git-share--base-url remote-url)
             (git-share--branch-prompt)
             (file-relative-name filename (vc-root-dir))
             (number-to-string (line-number-at-pos)))
          (git-share--format-line
-          (git-share--base-url filename remote-url)
+          (git-share--base-url remote-url)
           (git-share--branch-prompt)
           (file-relative-name filename (vc-root-dir))
           (number-to-string (line-number-at-pos (region-beginning)))
@@ -179,14 +186,6 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
 
 ;; (defun git-share--ssh-to-https (remote-url)
 ;;   (concat "https://" (replace-regexp-in-string ":" "/" (substring remote-url (length "git@")))))
-
-
-
-;; (defun git-share--branch-prompt ()
-;;   (let ((branches (vc-git-branches)))
-;;     (if (= (length branches) 1)
-;;         (car branches)
-;;       (completing-read "Select branch: " branches nil t))))
 
 ;; (defun git-share--copy-link (link)
 ;;   "Copy LINK to clipboard.
