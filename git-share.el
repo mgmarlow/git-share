@@ -43,6 +43,7 @@
   :group 'git-share
   :type 'boolean)
 
+;; Note: Savannah does not support regions.
 (defvar git-share-formatter-alist
   '((github . ((line . "%s/blob/%s/%s#L%s")
                (region . "%s/blob/%s/%s#L%s-L%s")
