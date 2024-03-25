@@ -12,6 +12,9 @@
             (input (cdr testcase)))
         (should (equal (git-share--forge input) expected))))))
 
+(ert-deftest test-unsupported-forge ()
+  (should-error (git-share--forge "https://foolab.com/user/repo")))
+
 (ert-deftest test-base-url ()
   (let ((testcases '(("https://github.com/user/repo" . ("foo.txt" "https://github.com/user/repo.git"))
                      ("https://github.com/user/repo" . ("foo.txt" "git@github.com:user/repo.git"))
@@ -23,6 +26,30 @@
       (let ((expected (car testcase))
             (input (cdr testcase)))
         (should (equal (apply #'git-share--base-url input) expected))))))
+
+(ert-deftest test-format-line ()
+  (let ((testcases '(("https://github.com/user/repo/blob/main/foo.txt#L1" .
+                      ("https://github.com/user/repo" "main" "foo.txt" 1))
+                     ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L1" .
+                      ("https://git.sr.ht/~user/repo" "main" "foo.txt" 1))
+                     ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L1" .
+                      ("https://gitlab.com/user/repo" "main" "foo.txt" 1)))))
+    (dolist (testcase testcases)
+      (let ((expected (car testcase))
+            (input (cdr testcase)))
+        (should (equal (apply #'git-share--format-line input) expected))))))
+
+(ert-deftest test-format-region ()
+  (let ((testcases '(("https://github.com/user/repo/blob/main/foo.txt#L1-L30" .
+                      ("https://github.com/user/repo" "main" "foo.txt" 1 30))
+                     ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L1-30" .
+                      ("https://git.sr.ht/~user/repo" "main" "foo.txt" 1 30))
+                     ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L1-30" .
+                      ("https://gitlab.com/user/repo" "main" "foo.txt" 1 30)))))
+    (dolist (testcase testcases)
+      (let ((expected (car testcase))
+            (input (cdr testcase)))
+        (should (equal (apply #'git-share--format-region input) expected))))))
 
 ;; (defun mock-remote (forge)
 ;;   (pcase forge

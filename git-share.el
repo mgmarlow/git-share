@@ -69,8 +69,6 @@
       (substring uri 0 (* (length ".git") -1))
     uri))
 
-;; TODO: Call vc-git-repository-url elsewhere
-
 (defun git-share--base-url (filename remote-url)
   "Create a base HTTP URL for FILENAME from REMOTE-URL. A base
 URL includes the source forge, username, and repository name.
@@ -96,7 +94,7 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
   "Retrieve a format-string from `git-share-formatter-alist'."
   (alist-get kind (alist-get forge git-share-formatter-alist)))
 
-(defun git-share--format-line (base-url branch filename)
+(defun git-share--format-line (base-url branch filename line)
   "Return a string URL for the git repository at line."
   (let ((forge (git-share--forge base-url)))
     (format
@@ -104,9 +102,9 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
      base-url
      branch
      filename
-     (number-to-string (line-number-at-pos)))))
+     (number-to-string line))))
 
-(defun git-share--format-region (base-url branch filename)
+(defun git-share--format-region (base-url branch filename start end)
   "Return a string URL for git repository for lines within current region."
   (let ((forge (git-share--forge base-url)))
     (format
@@ -114,8 +112,8 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
      base-url
      branch
      filename
-     (number-to-string (line-number-at-pos (region-beginning)))
-     (number-to-string (line-number-at-pos (region-end))))))
+     (number-to-string start)
+     (number-to-string end))))
 
 ;;;###autoload
 (defun git-share ()
@@ -128,11 +126,14 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
            (git-share--format-region
             (git-share--base-url filename remote-url)
             (git-share--branch-prompt)
-            (file-relative-name filename (vc-root-dir)))
+            (file-relative-name filename (vc-root-dir))
+            (line-number-at-pos))
          (git-share--format-line
           (git-share--base-url filename remote-url)
           (git-share--branch-prompt)
-          (file-relative-name filename (vc-root-dir)))))
+          (file-relative-name filename (vc-root-dir))
+          (line-number-at-pos (region-beginning))
+          (line-number-at-pos (region-end)))))
     (error "Must be in a git repository")))
 
 ;; (cl-defstruct git-share-remote
