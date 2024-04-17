@@ -119,9 +119,10 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
   "Retrieve a format-string from `git-share-formatter-alist'."
   (alist-get kind (alist-get forge git-share-formatter-alist)))
 
-(defun git-share--format-line (base-url branch filename line)
+(defun git-share--format-line (remote-url branch filename line)
   "Return a string URL for the git repository at line."
-  (let ((forge (git-share--forge base-url)))
+  (let* ((base-url (git-share--base-url remote-url))
+         (forge (git-share--forge base-url)))
     (format
      (git-share--format-string forge 'line)
      base-url
@@ -129,9 +130,10 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
      filename
      line)))
 
-(defun git-share--format-region (base-url branch filename start end)
+(defun git-share--format-region (remote-url branch filename start end)
   "Return a string URL for git repository for lines within current region."
-  (let ((forge (git-share--forge base-url)))
+  (let* ((base-url (git-share--base-url remote-url))
+        (forge (git-share--forge base-url)))
     (format
      (git-share--format-string forge 'region)
      base-url
@@ -149,12 +151,12 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
       (git-share--copy-link
        (if (use-region-p)
            (git-share--format-region
-            (git-share--base-url remote-url)
+            remote-url
             (git-share--branch-prompt)
             (file-relative-name filename (vc-root-dir))
             (number-to-string (line-number-at-pos)))
          (git-share--format-line
-          (git-share--base-url remote-url)
+          remote-url
           (git-share--branch-prompt)
           (file-relative-name filename (vc-root-dir))
           (number-to-string (line-number-at-pos (region-beginning)))

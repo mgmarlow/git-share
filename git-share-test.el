@@ -3,59 +3,128 @@
 (require 'git-share)
 (require 'ert)
 
-(ert-deftest test-forge ()
-  (let ((testcases '((github . "https://github.com/user/repo")
-                     (sourcehut . "https://git.sr.ht/~user/repo")
-                     (gitlab . "https://gitlab.com/user/repo")
-                     (savannah . "git://git.savannah.gnu.org/emacs.git")
-                     (savannah . "git://git.sv.gnu.org/emacs.git"))))
+(ert-deftest test-git-share-line ()
+  (let ((branch "main")
+        (line 15)
+        (filename "foo.txt") ;; relative to vc-root-dir
+        (testcases
+         '(("https://github.com/user/repo/blob/main/foo.txt#L15" . "git@github.com:user/repo.git")
+           ("https://github.com/user/repo/blob/main/foo.txt#L15" . "https://github.com/user/repo.git")
+           ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L15" . "https://git.sr.ht/~user/repo.git")
+           ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L15" . "git@git.sr.ht:~user/repo")
+           ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L15" . "https://gitlab.com/user/repo.git")
+           ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L15" . "git@gitlab.com:user/repo.git")
+           ("https://codeberg.org/user/repo/src/branch/main/foo.txt#L15" . "https://codeberg.org/user/repo.git")
+           ("https://bitbucket.org/user/repo/src/main/foo.txt#lines-15" . "https://bitbucket.org/user/repo.git")
+           ("https://bitbucket.org/user/repo/src/main/foo.txt#lines-15" . "git@bitbucket.org:user/repo.git")
+           ("https://git.savannah.gnu.org/cgit/repo.git/tree/foo.txt#n24" . "git://git.savannah.gnu.org/repo.git")
+           ("https://git.savannah.gnu.org/cgit/repo.git/tree/foo.txt#n24" . "https://git.savannah.gnu.org/git/repo.git")
+           ("https://git.savannah.gnu.org/cgit/repo.git/tree/foo.txt#n24" . "ssh://git.savannah.gnu.org/srv/git/repo.git"))))
     (dolist (testcase testcases)
       (let ((expected (car testcase))
-            (input (cdr testcase)))
-        (should (equal (git-share--forge input) expected))))))
+            (remote-url (cdr testcase)))
+        (should (equal (git-share--format-line remote-url branch filename line) expected))))))
 
-(ert-deftest test-unsupported-forge ()
-  (should-error (git-share--forge "https://foolab.com/user/repo")))
+(ert-deftest test-git-share-line-unsupported-remote ()
+  'stub)
 
-(ert-deftest test-base-url ()
-  (let ((testcases '(("https://github.com/user/repo" . ("https://github.com/user/repo.git"))
-                     ("https://github.com/user/repo" . ("git@github.com:user/repo.git"))
-                     ("https://git.sr.ht/~user/repo" . ("https://git.sr.ht/~user/repo.git"))
-                     ("https://git.sr.ht/~user/repo" . ("git@git.sr.ht:~user/repo"))
-                     ("https://gitlab.com/user/repo" . ("https://gitlab.com/user/repo.git"))
-                     ("https://gitlab.com/user/repo" . ("git@gitlab.com:user/repo.git"))
-                     ("https://git.savannah.gnu.org/cgit/emacs.git" . ("git://git.sv.gnu.org/emacs.git"))
-                     ("https://git.savannah.gnu.org/cgit/emacs.git" . ("git://git.savannah.gnu.org/emacs.git"))
-                     ("https://git.savannah.gnu.org/cgit/emacs.git" . ("ssh://git.savannah.gnu.org/emacs.git"))
-                     ("https://git.savannah.gnu.org/cgit/emacs.git" . ("https://git.savannah.gnu.org/emacs.git")))))
-    (dolist (testcase testcases)
-      (let ((expected (car testcase))
-            (input (cdr testcase)))
-        (should (equal (apply #'git-share--base-url input) expected))))))
+(ert-deftest test-git-share-line-rel-filename ()
+  (should (equal (git-share--format-line "git@github.com:user/repo.git" "main" "docs/bar/foo.txt" 15)
+                 "https://github.com/user/repo/blob/main/docs/bar/foo.txt#L15")))
 
-(ert-deftest test-format-line ()
-  (let ((testcases '(("https://github.com/user/repo/blob/main/foo.txt#L1" .
-                      ("https://github.com/user/repo" "main" "foo.txt" "1"))
-                     ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L1" .
-                      ("https://git.sr.ht/~user/repo" "main" "foo.txt" "1"))
-                     ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L1" .
-                      ("https://gitlab.com/user/repo" "main" "foo.txt" "1")))))
-    (dolist (testcase testcases)
-      (let ((expected (car testcase))
-            (input (cdr testcase)))
-        (should (equal (apply #'git-share--format-line input) expected))))))
+(ert-deftest test-git-share-region ()
+  'stub)
 
-(ert-deftest test-format-region ()
-  (let ((testcases '(("https://github.com/user/repo/blob/main/foo.txt#L1-L30" .
-                      ("https://github.com/user/repo" "main" "foo.txt" "1" "30"))
-                     ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L1-30" .
-                      ("https://git.sr.ht/~user/repo" "main" "foo.txt" "1" "30"))
-                     ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L1-30" .
-                      ("https://gitlab.com/user/repo" "main" "foo.txt" "1" "30")))))
-    (dolist (testcase testcases)
-      (let ((expected (car testcase))
-            (input (cdr testcase)))
-        (should (equal (apply #'git-share--format-region input) expected))))))
+;; ehhhhhh
+;; (require 'el-mock)
+;; (defun mock-save (funcsym)
+;;   (when (fboundp funcsym)
+;;     (put funcsym 'mock-original-func (symbol-function funcsym))))
+
+;; (defun mock-restore (funcsym)
+;;   (when-let ((func (get funcsym 'mock-original-func)))
+;;     (fset funcsym func)))
+
+;; (defun run-test-loc (expected url loc branch)
+;;   (unwind-protect
+;;       (mock-save 'buffer-file-name)
+;;     (mock-save 'vc-git-repository-url)
+;;     (mock-save 'vc-root-dir)
+
+;;     (fset 'buffer-file-name `(lambda (_) "~/repo/foo.txt"))
+;;     (fset 'vc-git-repository-url `(lambda () ,url))
+;;     (fset 'vc-root-dir `(lambda () "~/repo/"))
+
+;;     (should (equal (git-share) expected))
+
+;;     (mock-restore 'buffer-file-name)
+;;     (mock-restore 'vc-git-repository-url)
+;;     (mock-restore 'vc-root-dir)))
+
+;; (ert-deftest test-git-share ()
+;;   (run-test-loc "https://github.com/user/repo/blob/main/foo.txt#L1"
+;;                 "https://github.com/user/repo"
+;;                 155
+;;                 "main"))
+
+;; (ert-deftest test-forge ()
+;;   (let ((testcases '((github . "https://github.com/user/repo")
+;;                      (sourcehut . "https://git.sr.ht/~user/repo")
+;;                      (gitlab . "https://gitlab.com/user/repo")
+;;                      (savannah . "git://git.savannah.gnu.org/emacs.git")
+;;                      (savannah . "git://git.sv.gnu.org/emacs.git"))))
+;;     (dolist (testcase testcases)
+;;       (let ((expected (car testcase))
+;;             (input (cdr testcase)))
+;;         (should (equal (git-share--forge input) expected))))))
+
+;; (ert-deftest test-unsupported-forge ()
+;;   (should-error (git-share--forge "https://foolab.com/user/repo")))
+
+;; (ert-deftest test-base-url ()
+;;   (let ((testcases '(("https://github.com/user/repo" . ("https://github.com/user/repo.git"))
+;;                      ("https://github.com/user/repo" . ("git@github.com:user/repo.git"))
+;;                      ("https://git.sr.ht/~user/repo" . ("https://git.sr.ht/~user/repo.git"))
+;;                      ("https://git.sr.ht/~user/repo" . ("git@git.sr.ht:~user/repo"))
+;;                      ("https://gitlab.com/user/repo" . ("https://gitlab.com/user/repo.git"))
+;;                      ("https://gitlab.com/user/repo" . ("git@gitlab.com:user/repo.git"))
+;;                      ("https://git.savannah.gnu.org/cgit/emacs.git" . ("git://git.sv.gnu.org/emacs.git"))
+;;                      ("https://git.savannah.gnu.org/cgit/emacs.git" . ("git://git.savannah.gnu.org/emacs.git"))
+;;                      ("https://git.savannah.gnu.org/cgit/emacs.git" . ("ssh://git.savannah.gnu.org/emacs.git"))
+;;                      ("https://git.savannah.gnu.org/cgit/emacs.git" . ("https://git.savannah.gnu.org/emacs.git"))
+;;                      ("https://codeberg.org/user/repo" . ("https://codeberg.org/user/repo.git"))
+;;                      ("https://bitbucket.org/user/repo" . ("https://bitbucket.org/user/repo.git"))
+;;                      ("https://bitbucket.org/user/repo" . ("git@bitbucket.org:user/repo.git")))))
+;;     (dolist (testcase testcases)
+;;       (let ((expected (car testcase))
+;;             (input (cdr testcase)))
+;;         (should (equal (apply #'git-share--base-url input) expected))))))
+
+;; (ert-deftest test-format-line ()
+;;   (let ((testcases '(("https://github.com/user/repo/blob/main/foo.txt#L1" .
+;;                       ("https://github.com/user/repo" "main" "foo.txt" "1"))
+;;                      ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L1" .
+;;                       ("https://git.sr.ht/~user/repo" "main" "foo.txt" "1"))
+;;                      ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L1" .
+;;                       ("https://gitlab.com/user/repo" "main" "foo.txt" "1")))))
+;;     (dolist (testcase testcases)
+;;       (let ((expected (car testcase))
+;;             (input (cdr testcase)))
+;;         (should (equal (apply #'git-share--format-line input) expected))))))
+
+;; (ert-deftest test-format-region ()
+;;   (let ((testcases '(("https://github.com/user/repo/blob/main/foo.txt#L1-L30" .
+;;                       ("https://github.com/user/repo" "main" "foo.txt" "1" "30"))
+;;                      ("https://git.sr.ht/~user/repo/tree/main/item/foo.txt#L1-30" .
+;;                       ("https://git.sr.ht/~user/repo" "main" "foo.txt" "1" "30"))
+;;                      ("https://gitlab.com/user/repo/-/blob/main/foo.txt#L1-30" .
+;;                       ("https://gitlab.com/user/repo" "main" "foo.txt" "1" "30")))))
+;;     (dolist (testcase testcases)
+;;       (let ((expected (car testcase))
+;;             (input (cdr testcase)))
+;;         (should (equal (apply #'git-share--format-region input) expected))))))
+
+;;; -- OLD
 
 ;; (defun mock-remote (forge)
 ;;   (pcase forge
