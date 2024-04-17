@@ -53,7 +53,22 @@
                   (commit . "%s/commit/%s")))
     (gitlab . ((line . "%s/-/blob/%s/%s#L%s")
                (region . "%s/-/blob/%s/%s#L%s-%s")
-               (commit . "%s/-/commit/%s"))))
+               (commit . "%s/-/commit/%s")))
+    (codeberg . ((line . "%s/src/branch/%s/%s#L%s")
+                 ;; todo
+                 (region . "%s/src/branch/%s/%s#L%s-%s")
+                 (commit . "%s/-/commit/%s")))
+    (bitbucket . ((line . "%s/src/%s/%s#lines-%s")
+                  ;; todo
+                  (region . "%s/-/blob/%s/%s#L%s-%s")
+                  (commit . "%s/-/commit/%s")))
+    ;; TODO: order is not the same here, since branch is a query param
+    ;; (branch, file vs. file, branch).  Also need to url-encode.
+    ;; These probably need to be functions as a result.
+    (savannah . ((line . "%s/tree/%s?h=%s#n%s")
+                 ;; todo
+                 (region . "%s/-/blob/%s/%s#L%s-%s")
+                 (commit . "%s/-/commit/%s"))))
   "An alist of link formats for different source forges.")
 
 (defun git-share--forge (remote-url)
@@ -62,7 +77,8 @@
    ((string-match-p "github.com" remote-url) 'github)
    ((string-match-p "git.sr.ht" remote-url) 'sourcehut)
    ((string-match-p "gitlab.com" remote-url) 'gitlab)
-   ((string-match-p "git.sv.gnu.org" remote-url) 'savannah)
+   ((string-match-p "codeberg.org" remote-url) 'codeberg)
+   ;; ((string-match-p "git.sv.gnu.org" remote-url) 'savannah)
    (t (error "Unsupported git remote %s" remote-url))))
 
 (defun git-share--maybe-remove-extension (uri)

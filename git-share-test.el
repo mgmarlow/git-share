@@ -17,15 +17,21 @@
            ("https://codeberg.org/user/repo/src/branch/main/foo.txt#L15" . "https://codeberg.org/user/repo.git")
            ("https://bitbucket.org/user/repo/src/main/foo.txt#lines-15" . "https://bitbucket.org/user/repo.git")
            ("https://bitbucket.org/user/repo/src/main/foo.txt#lines-15" . "git@bitbucket.org:user/repo.git")
-           ("https://git.savannah.gnu.org/cgit/repo.git/tree/foo.txt#n24" . "git://git.savannah.gnu.org/repo.git")
-           ("https://git.savannah.gnu.org/cgit/repo.git/tree/foo.txt#n24" . "https://git.savannah.gnu.org/git/repo.git")
-           ("https://git.savannah.gnu.org/cgit/repo.git/tree/foo.txt#n24" . "ssh://git.savannah.gnu.org/srv/git/repo.git"))))
+           ;; todo: url-encode branch name
+           ;; ("https://git.savannah.gnu.org/cgit/repo.git/tree/foo.txt?h=main#n24" . "git://git.savannah.gnu.org/repo.git")
+           ;; ("https://git.savannah.gnu.org/cgit/repo.git/tree/foo.txt?h=main#n24" . "https://git.savannah.gnu.org/git/repo.git")
+           ;; ("https://git.savannah.gnu.org/cgit/repo.git/tree/foo.txt?h=main#n24" . "ssh://git.savannah.gnu.org/srv/git/repo.git")))
+        )))
     (dolist (testcase testcases)
       (let ((expected (car testcase))
             (remote-url (cdr testcase)))
-        (should (equal (git-share--format-line remote-url branch filename line) expected))))))
+        (should (equal (git-share--format-line remote-url branch filename line)
+                       expected))))))
 
 (ert-deftest test-git-share-line-unsupported-remote ()
+  'stub)
+
+(ert-deftest test-git-share-line-url-encodes-savannah ()
   'stub)
 
 (ert-deftest test-git-share-line-rel-filename ()
