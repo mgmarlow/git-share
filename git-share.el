@@ -43,33 +43,91 @@
   :group 'git-share
   :type 'boolean)
 
-;; Note: Savannah does not support regions.
-(defvar git-share-formatter-alist
-  '((github . ((line . "%s/blob/%s/%s#L%s")
-               (region . "%s/blob/%s/%s#L%s-L%s")
-               (commit . "%s/commit/%s")))
-    (sourcehut . ((line . "%s/tree/%s/item/%s#L%s")
-                  (region . "%s/tree/%s/item/%s#L%s-%s")
-                  (commit . "%s/commit/%s")))
-    (gitlab . ((line . "%s/-/blob/%s/%s#L%s")
-               (region . "%s/-/blob/%s/%s#L%s-%s")
-               (commit . "%s/-/commit/%s")))
-    (codeberg . ((line . "%s/src/branch/%s/%s#L%s")
-                 ;; todo
-                 (region . "%s/src/branch/%s/%s#L%s-%s")
-                 (commit . "%s/-/commit/%s")))
-    (bitbucket . ((line . "%s/src/%s/%s#lines-%s")
-                  ;; todo
-                  (region . "%s/-/blob/%s/%s#L%s-%s")
-                  (commit . "%s/-/commit/%s")))
-    ;; TODO: order is not the same here, since branch is a query param
-    ;; (branch, file vs. file, branch).  Also need to url-encode.
-    ;; These probably need to be functions as a result.
-    (savannah . ((line . "%s/tree/%s?h=%s#n%s")
-                 ;; todo
-                 (region . "%s/-/blob/%s/%s#L%s-%s")
-                 (commit . "%s/-/commit/%s"))))
-  "An alist of link formats for different source forges.")
+(defun git-share--github-format-line (base-url branch filename line)
+  (format "%s/blob/%s/%s#L%s" base-url branch filename line))
+
+(defun git-share--github-format-region (base-url branch filename start end)
+  (format "%s/blob/%s/%s#L%s-L%s" base-url branch filename start end))
+
+(defun git-share--sourcehut-format-line (base-url branch filename line)
+  (format "%s/tree/%s/item/%s#L%s" base-url branch filename line))
+
+(defun git-share--sourcehut-format-region (base-url branch filename start end)
+  (format "%s/tree/%s/item/%s#L%s-%s" base-url branch filename start end))
+
+(defun git-share--gitlab-format-line (base-url branch filename line)
+  (format "%s/-/blob/%s/%s#L%s" base-url branch filename line))
+
+(defun git-share--gitlab-format-region (base-url branch filename start end)
+  (format "%s/-/blob/%s/%s#L%s-%s" base-url branch filename start end))
+
+(defun git-share--codeberg-format-line (base-url branch filename line)
+  (format "%s/src/branch/%s/%s#L%s" base-url branch filename line))
+
+;; todo
+(defun git-share--codeberg-format-region (base-url branch filename start end)
+  (format "%s/src/branch/%s/%s#L%s-%s" base-url branch filename start end))
+
+(defun git-share--bitbucket-format-line (base-url branch filename line)
+  (format "%s/src/%s/%s#lines-%s" base-url branch filename line))
+
+;; todo
+(defun git-share--bitbucket-format-region (base-url branch filename start end)
+  (format "%s/-/blob/%s/%s#L%s-%s" base-url branch filename start end))
+
+;; todo
+(defun git-share--savannah-format-line (base-url branch filename line)
+  (format "" base-url branch filename line))
+
+;; todo
+(defun git-share--savannah-format-region (base-url branch filename start end)
+  (format "" base-url branch filename start end))
+
+;; Or, totally dynamic!
+(defun git-share--format-line (remote-url branch filename loc)
+  (let* ((base-url (git-share--base-url remote-url))
+         (forge (git-share--forge base-url))
+         (func (intern (concat "git-share--" (symbol-name forge) "-format-line"))))
+    (funcall func base-url branch filename loc)))
+
+;; (git-share--format-line 'github "foo" "bar" "me.txt" 15)
+
+;; (defvar git-share-formatters
+;;   `((github . ((line . ,#'github--format-line)
+;;                (region . ,#'github--format-region)))))
+
+;; ;; This is what an actual call will look like:
+;; (funcall (alist-get 'line (alist-get 'github git-share-formatters)) "foo" "bar" "me.txt" 15)
+
+;; ;; Note: Savannah does not support regions.
+;; (defvar git-share-formatter-alist
+;;   '((github . ((line . "%s/blob/%s/%s#L%s")
+;;                (region . "%s/blob/%s/%s#L%s-L%s")
+;;                (commit . "%s/commit/%s")))
+;;     (sourcehut . ((line . "%s/tree/%s/item/%s#L%s")
+;;                   (region . "%s/tree/%s/item/%s#L%s-%s")
+;;                   (commit . "%s/commit/%s")))
+;;     (gitlab . ((line . "%s/-/blob/%s/%s#L%s")
+;;                (region . "%s/-/blob/%s/%s#L%s-%s")
+;;                (commit . "%s/-/commit/%s")))
+;;     (codeberg . ((line . "%s/src/branch/%s/%s#L%s")
+;;                  ;; todo
+;;                  (region . "%s/src/branch/%s/%s#L%s-%s")
+;;                  (commit . "%s/-/commit/%s")))
+;;     (bitbucket . ((line . "%s/src/%s/%s#lines-%s")
+;;                   ;; todo
+;;                   (region . "%s/-/blob/%s/%s#L%s-%s")
+;;                   (commit . "%s/-/commit/%s")))
+;;     ;; TODO: order is not the same here, since branch is a query param
+;;     ;; (branch, file vs. file, branch).  Also need to url-encode.
+;;     ;; These probably need to be functions as a result.
+;;     ;;
+;;     ;; Thoughts on eieio?
+;;     (savannah . ((line . "%s/tree/%s?h=%s#n%s")
+;;                  ;; todo
+;;                  (region . "%s/-/blob/%s/%s#L%s-%s")
+;;                  (commit . "%s/-/commit/%s"))))
+;;   "An alist of link formats for different source forges.")
 
 (defun git-share--forge (remote-url)
   "Return source forge from REMOTE-URL."
@@ -131,32 +189,32 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
 ;; (defun git-share--region-github (base-url branch filename start end)
 ;;   (format "%s/blob/%s/%s#L%s-L%s" base-url branch filename start end))
 
-(defun git-share--format-string (forge kind)
-  "Retrieve a format-string from `git-share-formatter-alist'."
-  (alist-get kind (alist-get forge git-share-formatter-alist)))
+;; (defun git-share--format-string (forge kind)
+;;   "Retrieve a format-string from `git-share-formatter-alist'."
+;;   (alist-get kind (alist-get forge git-share-formatter-alist)))
 
-(defun git-share--format-line (remote-url branch filename line)
-  "Return a string URL for the git repository at line."
-  (let* ((base-url (git-share--base-url remote-url))
-         (forge (git-share--forge base-url)))
-    (format
-     (git-share--format-string forge 'line)
-     base-url
-     branch
-     filename
-     line)))
+;; (defun git-share--format-line (remote-url branch filename line)
+;;   "Return a string URL for the git repository at line."
+;;   (let* ((base-url (git-share--base-url remote-url))
+;;          (forge (git-share--forge base-url)))
+;;     (format
+;;      (git-share--format-string forge 'line)
+;;      base-url
+;;      branch
+;;      filename
+;;      line)))
 
-(defun git-share--format-region (remote-url branch filename start end)
-  "Return a string URL for git repository for lines within current region."
-  (let* ((base-url (git-share--base-url remote-url))
-        (forge (git-share--forge base-url)))
-    (format
-     (git-share--format-string forge 'region)
-     base-url
-     branch
-     filename
-     start
-     end)))
+;; (defun git-share--format-region (remote-url branch filename start end)
+;;   "Return a string URL for git repository for lines within current region."
+;;   (let* ((base-url (git-share--base-url remote-url))
+;;         (forge (git-share--forge base-url)))
+;;     (format
+;;      (git-share--format-string forge 'region)
+;;      base-url
+;;      branch
+;;      filename
+;;      start
+;;      end)))
 
 ;;;###autoload
 (defun git-share ()
