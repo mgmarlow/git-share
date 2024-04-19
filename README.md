@@ -4,9 +4,12 @@ An emacs package for sharing code links with colleagues.
 
 Supports:
 
-- Github
-- Sourcehut
-- Gitlab
+- GitHub
+- SourceHut
+- GitLab
+- Codeberg
+- Bitbucket
+- GNU Savannah
 
 ## Installation
 
@@ -42,11 +45,6 @@ git clone https://github.com/mgmarlow/git-share /path/to/git-share
 
 - `git-share-open-links-in-browser`: When `t`, opens links in your
   browser when copied.
-
-### Adding new git remotes
-
-Check out this commit for an example: [Add Gitlab
-support](https://github.com/mgmarlow/git-share/commit/7f04a4a284bbff3eb9bacba93064351af5c4ffb6).
 
 ## License
 

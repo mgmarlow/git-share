@@ -23,11 +23,31 @@
 
 ;;; Commentary:
 
-;; TODO
+;; A tiny Emacs package that provides a couple of commands for copying
+;; web links to git repositories.  Links are copied to the kill-ring
+;; with a configuration option available to additionally open them in
+;; your default browser.  The link URI is determined based on the
+;; remote URI of the git repository in which the buffer file resides.
+;; If there are multiple branches, the user is prompted to select one.
+
+;; `git-share' copies a link to the current line or region at point.
+
+;; `git-share-commit' copies a link to the current commit based on a
+;; blame of the line at point.
+
+;; The following forges are supported:
+;;
+;; - GitHub
+;; - SourceHut
+;; - GitLab
+;; - Codeberg
+;; - Bitbucket
+;; - GNU Savannah
 
 ;;; Code:
 
 (require 'vc-git)
+(require 'url-parse)
 
 (defgroup git-share ()
   "Generate links to git repositories directly from source."
@@ -51,26 +71,44 @@
    (t (error "Unsupported git remote %s" remote-url))))
 
 ;;; Dynamic formatter functions
-(defun git-share--build-line-func (forge)
-  (intern (concat "git-share--" (symbol-name forge) "-format-line")))
 
-(defmacro git-share--create-line-formatter (forge formatter)
-  `(defun ,(git-share--build-line-func forge) (base-url branch filename line)
-     (format ,formatter base-url branch filename line)))
+;; The following macros create defuns called by `git-share' when
+;; pairing a forge-type (e.g. github) to a format string.  Most forges
+;; use a very similar format for their URLs, so the majority of macro
+;; invocations only differ by format string.  Others, like GNU
+;; Savannah, require a custom format function due to a different order
+;; of arguments.
+;;
+;; The defun created by these macros follows a consistent structure
+;; that is expected by the respective callsite,
+;; e.g. `git-share--format-line'.  That structure looks like
+;; "git-share--<FORGE-NAME>-format-<KIND>".
 
-(defun git-share--build-region-func (forge)
-  (intern (concat "git-share--" (symbol-name forge) "-format-region")))
+;; These functions are used during the application runtime when called
+;; by the top-level `git-share-format-<KIND>', hence the
+;; `eval-and-compile'.
+(eval-and-compile
+  (defun git-share--build-line-func (forge)
+    (intern (concat "git-share--" (symbol-name forge) "-format-line")))
 
-(defmacro git-share--create-region-formatter (forge formatter)
-  `(defun ,(git-share--build-region-func forge) (base-url branch filename start end)
-     (format ,formatter base-url branch filename start end)))
+  (defun git-share--build-region-func (forge)
+    (intern (concat "git-share--" (symbol-name forge) "-format-region")))
 
-(defun git-share--build-commit-func (forge)
-  (intern (concat "git-share--" (symbol-name forge) "-format-commit")))
+  (defun git-share--build-commit-func (forge)
+    (intern (concat "git-share--" (symbol-name forge) "-format-commit"))))
 
-(defmacro git-share--create-commit-formatter (forge formatter)
-  `(defun ,(git-share--build-commit-func forge) (base-url commit)
-     (format ,formatter base-url commit)))
+(eval-when-compile
+  (defmacro git-share--create-line-formatter (forge formatter)
+    `(defun ,(git-share--build-line-func forge) (base-url branch filename line)
+       (format ,formatter base-url branch filename line)))
+
+  (defmacro git-share--create-region-formatter (forge formatter)
+    `(defun ,(git-share--build-region-func forge) (base-url branch filename start end)
+       (format ,formatter base-url branch filename start end)))
+
+  (defmacro git-share--create-commit-formatter (forge formatter)
+    `(defun ,(git-share--build-commit-func forge) (base-url commit)
+       (format ,formatter base-url commit))))
 
 ;;; Line formatters
 (git-share--create-line-formatter github "%s/blob/%s/%s#L%s")
@@ -91,7 +129,7 @@
 (git-share--create-region-formatter codeberg "%s/src/branch/%s/%s#L%s-L%s")
 (git-share--create-region-formatter bitbucket "%s/src/%s/%s#lines-%s:%s")
 
-(defun git-share--savannah-format-region (base-url branch filename start end)
+(defun git-share--savannah-format-region (_base-url _branch _filename _start _end)
   (error "GNU Savannah does not support region links"))
 
 ;;; Commit formatters
@@ -204,8 +242,8 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
 (defun git-share--vc-git-blame (files &optional buffer &rest args)
   "Run git blame on FILES.
 
-If BUFFER is nil, output is written to the *vc-blame* buffer. ARGS
-are forwarded into the git blame command."
+If BUFFER is nil, output is written to the *vc-blame* buffer.
+ARGS are forwarded into the git blame command."
   (apply #'vc-git-command (or buffer "*vc-blame*") 1 files
          "blame" args))
 
