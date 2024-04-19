@@ -1,5 +1,18 @@
 * git-share changelog
 
+** 2.0.0 04/19/2024
+
+- A big rewrite that makes the codebase more flexible to support
+  forges that follow non-standard formats (looking at you, GNU
+  Savannah).
+
+- Add support for a bunch of extra forges: Codeberg, Bitbucket, and
+  GNU Savannah.
+
+** 1.0.2 03/24/2024
+
+- Fix Github regions by adding a trailing "L", e.g. "#L23-L30".
+
 ** 1.0.1 10/26/2023
 
 - Fix a bug where relative file names break ~git-share-commit~.
