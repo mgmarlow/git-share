@@ -25,11 +25,6 @@
 
 ;; TODO
 
-;; V2 Goals:
-;; (a) remove cl-lib
-;; (b) simplify API
-;; (c) add support for more forges
-
 ;;; Code:
 
 (require 'vc-git)
@@ -55,8 +50,7 @@
    ((string-match-p "sv.gnu.org" remote-url) 'savannah)
    (t (error "Unsupported git remote %s" remote-url))))
 
-;;;; Formatter function creators
-
+;;; Dynamic formatter functions
 (defun git-share--build-line-func (forge)
   (intern (concat "git-share--" (symbol-name forge) "-format-line")))
 
@@ -71,15 +65,22 @@
   `(defun ,(git-share--build-region-func forge) (base-url branch filename start end)
      (format ,formatter base-url branch filename start end)))
 
+(defun git-share--build-commit-func (forge)
+  (intern (concat "git-share--" (symbol-name forge) "-format-commit")))
+
+(defmacro git-share--create-commit-formatter (forge formatter)
+  `(defun ,(git-share--build-commit-func forge) (base-url commit)
+     (format ,formatter base-url commit)))
+
 ;;; Line formatters
 (git-share--create-line-formatter github "%s/blob/%s/%s#L%s")
 (git-share--create-line-formatter sourcehut "%s/tree/%s/item/%s#L%s")
 (git-share--create-line-formatter gitlab "%s/-/blob/%s/%s#L%s")
 (git-share--create-line-formatter codeberg "%s/src/branch/%s/%s#L%s")
 (git-share--create-line-formatter bitbucket "%s/src/%s/%s#lines-%s")
-
-;; Savannah swaps the position of the branch/filename arguments, since
-;; branch is a query parameter.
+;; Compared to the other format-line functions, GNU Savannah swaps the
+;; position of the branch/filename arguments since branch is a query
+;; parameter.
 (defun git-share--savannah-format-line (base-url branch filename line)
   (format "%s/tree/%s?h=%s#n%s" base-url filename branch line))
 
@@ -94,9 +95,15 @@
   (error "GNU Savannah does not support region links"))
 
 ;;; Commit formatters
+(git-share--create-commit-formatter github "%s/commit/%s")
+(git-share--create-commit-formatter sourcehut "%s/commit/%s")
+(git-share--create-commit-formatter gitlab "%s/-/commit/%s")
+(git-share--create-commit-formatter codeberg "%s/commit/%s")
+(git-share--create-commit-formatter bitbucket "%s/commits/%s")
+(git-share--create-commit-formatter savannah "%s/commit/?id=%s")
 
-;; todo
-
+;; TODO: Could probably clean this up a bit, all three of these format
+;; function fetchers are very similar.
 (defun git-share--format-line (remote-url branch filename loc)
   "Assumes a formatter function that matches `git-share--build-line-func'."
   (let* ((base-url (git-share--base-url remote-url))
@@ -111,6 +118,14 @@
          (func (git-share--build-region-func forge)))
     (url-encode-url (funcall func base-url branch filename start end))))
 
+(defun git-share--format-commit (remote-url commit)
+  "Assumes a formatter function that matches `git-share--build-commit-func'."
+  (let* ((base-url (git-share--base-url remote-url))
+         (forge (git-share--forge base-url))
+         (func (git-share--build-commit-func forge)))
+    (url-encode-url (funcall func base-url commit))))
+
+;;; Helpers for forming the base link path
 (defun git-share--maybe-ssh-uri-to-https (remote-url)
   "Convert an SSH REMOTE-URL (git@) to HTTPS, if needed."
   (if (string-prefix-p "git@" remote-url)
@@ -185,119 +200,46 @@ Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
           (number-to-string (line-number-at-pos)))))
     (error "Must be in a git repository")))
 
-;; (cl-defstruct git-share-remote
-;;   "Wrapper around `vc-git-repository-url'."
-;;   base-url filename rel-filename forge)
+;;; Commit extraction
+(defun git-share--vc-git-blame (files &optional buffer &rest args)
+  "Run git blame on FILES.
 
-;; (defun git-share-remote-from-filename (filename &optional remote-url)
-;;   "Create `git-share-remote' from FILENAME.
+If BUFFER is nil, output is written to the *vc-blame* buffer. ARGS
+are forwarded into the git blame command."
+  (apply #'vc-git-command (or buffer "*vc-blame*") 1 files
+         "blame" args))
 
-;; If REMOTE-URL is nil, determines remote URL via
-;; `vc-git-repository-url'."
-;;   (let* ((remote-url (or remote-url (vc-git-repository-url filename))))
-;;     (make-git-share-remote
-;;      :base-url (git-share--link-base-url remote-url)
-;;      :filename filename
-;;      :rel-filename (file-relative-name filename (vc-root-dir))
-;;      :forge (git-share--forge-kind remote-url))))
+(defun git-share--blame-line (filename loc)
+  "Return git blame for FILENAME at LOC as a string."
+  (let* ((loc (number-to-string loc))
+         (loc-arg (concat "-L " loc "," loc)))
+    (with-temp-buffer
+      (git-share--vc-git-blame filename (current-buffer) loc-arg)
+      (substring (buffer-string) 0 -1))))
 
-;; (cl-defstruct git-share-forge loc-format-string commit-format-string)
+(defun git-share--extract-commit (blame-string)
+  "Extract commit hash from BLAME-STRING, stripping leading ^ if present."
+  (let ((hash (car (split-string blame-string " "))))
+    (if (string-prefix-p "^" hash)
+        (substring hash 1)
+      hash)))
 
-;; (defun git-share--link-base-url (remote-url)
-;;   (git-share--maybe-remove-extension
-;;    (if (string-prefix-p "https" remote-url)
-;;        remote-url
-;;      (git-share--ssh-to-https remote-url))))
+(defun git-share--commit-at-point (filename)
+  "Extract a short commit hash for REMOTE from LOC at point."
+  (git-share--extract-commit
+   (git-share--blame-line filename (line-number-at-pos))))
 
-;; (defun git-share--ssh-to-https (remote-url)
-;;   (concat "https://" (replace-regexp-in-string ":" "/" (substring remote-url (length "git@")))))
-
-;; (defun git-share--copy-link (link)
-;;   "Copy LINK to clipboard.
-
-;; Opens LINK via `browse-url' if `git-share-open-links-in-browser' is non-nil."
-;;   (kill-new link)
-;;   (when git-share-open-links-in-browser
-;;     (browse-url link))
-;;   (message (concat "Copied " link " to clipboard.")))
-
-;; (defun git-share--vc-git-blame (files &optional buffer &rest args)
-;;   "Run git blame on FILES.
-
-;; If BUFFER is nil, output is written to the *vc-blame* buffer. ARGS
-;; are forwarded into the git blame command."
-;;   (apply #'vc-git-command (or buffer "*vc-blame*") 1 files
-;;          "blame" args))
-
-;; (defun git-share--blame-line (filename loc)
-;;   "Return git blame for FILENAME at LOC as a string."
-;;   (let* ((loc (number-to-string loc))
-;;          (loc-arg (concat "-L " loc "," loc)))
-;;     (with-temp-buffer
-;;       (git-share--vc-git-blame filename (current-buffer) loc-arg)
-;;       (substring (buffer-string) 0 -1))))
-
-;; (defun git-share--extract-commit (blame-string)
-;;   "Extract commit hash from BLAME-STRING, stripping leading ^ if present."
-;;   (let ((hash (car (split-string blame-string " "))))
-;;     (if (string-prefix-p "^" hash)
-;;         (substring hash 1)
-;;       hash)))
-
-;; (defun git-share--commit-at-point (remote)
-;;   "Extract a short commit hash for REMOTE from LOC at point."
-;;   (git-share--extract-commit
-;;    (git-share--blame-line (git-share-remote-filename remote) (line-number-at-pos))))
-
-;; (defun git-share--line-number (forge)
-;;   "Return LOC line number for `git-share' as a string.
-
-;; When region is active, returns a range, e.g. 10-20.  Otherwise,
-;; returns `line-number-at-pos'."
-;;   (if (use-region-p)
-;;       (concat
-;;        (number-to-string (line-number-at-pos (region-beginning)))
-;;        "-"
-;;        ;; Github requires a trailing -L in the second half of the range.
-;;        (if (eq forge 'github) "L" "")
-;;        (number-to-string (line-number-at-pos (region-end))))
-;;     (number-to-string (line-number-at-pos))))
-
-;; (defun git-share--loc-url (remote &optional default-branch)
-;;   (let* ((branch (or default-branch (git-share--branch-prompt)))
-;;          (loc (git-share--line-number (git-share-remote-forge remote)))
-;;          (forge (alist-get (git-share-remote-forge remote) git-share-forge-alist)))
-;;     (format
-;;      (git-share-forge-loc-format-string forge)
-;;      (git-share-remote-base-url remote)
-;;      branch
-;;      (concat (git-share-remote-rel-filename remote) "#L" loc))))
-
-;; (defun git-share--commit-url (remote &optional commit)
-;;   (let* ((commit (or commit (git-share--commit-at-point remote)))
-;;          (forge (alist-get (git-share-remote-forge remote) git-share-forge-alist)))
-;;     (format
-;;      (git-share-forge-commit-format-string forge)
-;;      (git-share-remote-base-url remote)
-;;      commit)))
-
-;; ;;;###autoload
-;; (defun git-share ()
-;;   "Copy a web link to the LOC at point."
-;;   (interactive)
-;;   (if-let* ((filename (buffer-file-name (current-buffer)))
-;;             (remote (git-share-remote-from-filename filename)))
-;;       (git-share--copy-link (git-share--loc-url remote))
-;;     (error "Must be in a git repository")))
-
-;; ;;;###autoload
-;; (defun git-share-commit ()
-;;   "Copy a web link to the commit at point."
-;;   (interactive)
-;;   (if-let* ((filename (buffer-file-name (current-buffer)))
-;;             (remote (git-share-remote-from-filename filename)))
-;;       (git-share--copy-link (git-share--commit-url remote))
-;;     (error "Must be in a git repository")))
+;;;###autoload
+(defun git-share-commit ()
+  "Copy a web link to the commit at point."
+  (interactive)
+  (if-let* ((filename (buffer-file-name (current-buffer)))
+            (remote-url (vc-git-repository-url filename)))
+      (git-share--copy-link
+       (git-share--format-commit
+        remote-url
+        (git-share--commit-at-point (file-relative-name filename (vc-root-dir)))))
+    (error "Must be in a git repository")))
 
 (provide 'git-share)
 ;;; git-share.el ends here

@@ -60,23 +60,25 @@
 (ert-deftest test-git-share-region-errors-on-savannah ()
   (should-error (git-share--format-region "git://git.savannah.gnu.org/repo.git" "main" "foo.txt" 15 30)))
 
-;;; -- OLD
+(ert-deftest test-git-share-commit ()
+  (let ((commit "002c05b6")
+        (testcases
+         '(("https://github.com/user/repo/commit/002c05b6" . "git@github.com:user/repo.git")
+           ("https://github.com/user/repo/commit/002c05b6" . "https://github.com/user/repo.git")
+           ("https://git.sr.ht/~user/repo/commit/002c05b6" . "https://git.sr.ht/~user/repo.git")
+           ("https://git.sr.ht/~user/repo/commit/002c05b6" . "git@git.sr.ht:~user/repo")
+           ("https://gitlab.com/user/repo/-/commit/002c05b6" . "https://gitlab.com/user/repo.git")
+           ("https://gitlab.com/user/repo/-/commit/002c05b6" . "git@gitlab.com:user/repo.git")
+           ("https://codeberg.org/user/repo/commit/002c05b6" . "https://codeberg.org/user/repo.git")
+           ("https://bitbucket.org/user/repo/commits/002c05b6" . "https://bitbucket.org/user/repo.git")
+           ("https://bitbucket.org/user/repo/commits/002c05b6" . "git@bitbucket.org:user/repo.git")
+           ("https://git.savannah.gnu.org/cgit/repo.git/commit/?id=002c05b6" . "git://git.savannah.gnu.org/repo.git")
+           ("https://git.sv.gnu.org/cgit/repo.git/commit/?id=002c05b6" . "git://git.sv.gnu.org/repo.git")
+           ("https://git.savannah.gnu.org/cgit/repo.git/commit/?id=002c05b6" . "https://git.savannah.gnu.org/git/repo.git"))))
+    (dolist (testcase testcases)
+      (let ((expected (car testcase))
+            (remote-url (cdr testcase)))
+        (should (equal (git-share--format-commit remote-url commit) expected))))))
 
-;; (ert-deftest test-github-commit ()
-;;   (should (equal (git-share--commit-url (mock-remote 'github-ssh) "002c05b6")
-;;                  "https://github.com/user/repo/commit/002c05b6")))
-
-;; (ert-deftest test-sourcehut-commit ()
-;;   (should (equal (git-share--commit-url (mock-remote 'sourcehut-ssh) "002c05b6")
-;;                  "https://git.sr.ht/~user/repo/commit/002c05b6")))
-
-;; (ert-deftest test-gitlab-commit ()
-;;   (should (equal (git-share--commit-url (mock-remote 'gitlab-ssh) "002c05b6")
-;;                  "https://gitlab.com/user/repo/-/commit/002c05b6")))
-
-;; (ert-deftest test-extract-commit ()
-;;   "Test commit extraction from git blame."
-;;   (should (equal (git-share--extract-commit "002c05b6 (mgmarlow 2023-04-29 10:09:12 -0700 77)   \"Extracts basename from HTTPS repository URI.")
-;;                  "002c05b6"))
-;;   (should (equal (git-share--extract-commit "^002c05b6 (mgmarlow 2023-04-29 10:09:12 -0700 77)   \"Extracts basename from HTTPS repository URI.")
-;;                  "002c05b6")))
+(ert-deftest test-git-share-commit-unsupported-remote ()
+  (should-error (git-share--format-commit "git@foo.bar:user/repo.git" "002c05b6")))
